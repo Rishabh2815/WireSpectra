@@ -1032,6 +1032,22 @@ python3 generate_test_pcap.py
 
 ---
 
+## Implemented traffic-analysis additions
+
+- Added signatures for Twitch, Steam, Slack, Snapchat, LinkedIn, Reddit, Roblox, and Epic Games, and tightened domain matches to avoid substring collisions.
+- Added per-flow rate-based delay during offline PCAP processing and a live one-second terminal statistics line.
+- UDP destination port 443 is detected as QUIC/HTTP/3. Supported v1/v2 QUIC Initial packets are decrypted for TLS ClientHello SNI; unsupported versions and fragmented CRYPTO frames may remain unclassified by domain.
+- IP, app, and domain rules are loaded from `rules.conf` and saved after processing. Use `--rules <file>` to select another path.
+
+Example:
+
+```sh
+./packet_analyzer test_dpi.pcap output.pcap --block-app Twitch --rules rules.conf
+./packet_analyzer --self-test
+```
+
+The engine processes saved PCAP captures; it does not shape live host traffic. Vercel can serve static assets but cannot run persistent packet capture or DPI. Deploy the frontend on Vercel and run the capture engine on a persistent host with the required interface access.
+
 ## Summary
 
 This DPI engine demonstrates:

@@ -1,24 +1,24 @@
 cmake_minimum_required(VERSION 3.16)
-project(PacketAnalyzer VERSION 1.0)
+project(WireSpectra VERSION 1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Source files
-set(SOURCES
-    src/main.cpp
+find_package(OpenSSL REQUIRED)
+find_package(Threads REQUIRED)
+
+add_executable(packet_analyzer
+    src/dpi_mt.cpp
     src/pcap_reader.cpp
     src/packet_parser.cpp
+    src/sni_extractor.cpp
+    src/types.cpp
 )
-
-# Header files location
-include_directories(${CMAKE_SOURCE_DIR}/include)
-
-# Create the executable
-add_executable(packet_analyzer ${SOURCES})
-
-# For macOS, we might need to link against system libraries later
-if(APPLE)
-    # Add any macOS-specific settings here
+target_include_directories(packet_analyzer PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(packet_analyzer PRIVATE OpenSSL::Crypto Threads::Threads)
+if(MSVC)
+    target_compile_options(packet_analyzer PRIVATE /W4)
+else()
+    target_compile_options(packet_analyzer PRIVATE -Wall -Wextra -Wpedantic)
 endif()
