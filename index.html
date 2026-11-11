@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="WireSpectra is a C++ deep packet inspection engine for analyzing PCAP captures, classifying applications, and applying traffic rules.">
+  <title>WireSpectra | PCAP Traffic Analyzer</title>
+  <style>
+    :root { color-scheme: dark; --bg:#07111f; --panel:#101d2d; --muted:#a8b6c8; --text:#f3f7fc; --accent:#48d6b5; --line:#26374a; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(ellipse at 80% 0%,#123344 0,transparent 40%),var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { width:min(1040px,calc(100% - 40px)); margin:0 auto; padding:34px 0 72px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:20px; }
+    .brand { font-weight:750; letter-spacing:.04em; }
+    .badge { color:var(--accent); border:1px solid #287a6d; border-radius:999px; padding:5px 12px; font-size:.82rem; }
+    .hero { padding:94px 0 64px; max-width:760px; }
+    h1 { margin:0 0 20px; font-size:clamp(2.5rem,7vw,5rem); line-height:1.03; letter-spacing:-.055em; }
+    h1 span { color:var(--accent); }
+    .lead { color:var(--muted); font-size:1.2rem; max-width:690px; }
+    .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; }
+    a.button { display:inline-block; color:var(--bg); background:var(--accent); padding:11px 17px; border-radius:8px; text-decoration:none; font-weight:700; }
+    a.secondary { color:var(--text); background:transparent; border:1px solid var(--line); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+    article { background:linear-gradient(145deg,#132235,var(--panel)); border:1px solid var(--line); border-radius:12px; padding:20px; }
+    h2 { margin:0 0 8px; font-size:1.05rem; }
+    article p, footer { margin:0; color:var(--muted); }
+    .notice { margin-top:24px; border-left:3px solid var(--accent); padding:14px 17px; background:#0d1a28; color:var(--muted); }
+    footer { padding-top:30px; font-size:.9rem; }
+    @media(max-width:600px) { .hero { padding-top:70px; } header { align-items:flex-start; flex-direction:column; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><div class="brand">WIRESPECTRA</div><div class="badge">C++ · PCAP analysis</div></header>
+    <section class="hero">
+      <h1>See what’s inside <span>your traffic.</span></h1>
+      <p class="lead">WireSpectra is a deep packet inspection engine for analyzing packet captures, classifying application traffic, and applying configurable filtering rules.</p>
+      <div class="actions">
+        <a class="button" href="https://github.com/Rishabh2815/WireSpectra">View source on GitHub</a>
+        <a class="button secondary" href="https://github.com/Rishabh2815/WireSpectra#10-building-and-running">Build and run</a>
+      </div>
+    </section>
+    <section class="grid" aria-label="Capabilities">
+      <article><h2>Application signatures</h2><p>Classify known services from TLS SNI and HTTP host information in captured traffic.</p></article>
+      <article><h2>QUIC and HTTP/3</h2><p>Identify UDP port 443 traffic and inspect supported QUIC Initial ClientHello data.</p></article>
+      <article><h2>Traffic rules</h2><p>Filter by application, domain, or source IP, with rules loaded from a local file.</p></article>
+      <article><h2>Capture statistics</h2><p>Review packet counts, classifications, forwarding, and throttling while processing PCAP files.</p></article>
+    </section>
+    <p class="notice"><strong>Deployment note:</strong> This website is a static project page. The C++ analyzer processes saved PCAP files and must run separately on a host with the required build tools and capture files.</p>
+    <footer>WireSpectra · Open-source packet analysis project</footer>
+  </main>
+</body>
+</html>
