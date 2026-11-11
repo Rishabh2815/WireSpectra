@@ -992,46 +992,6 @@ python3 generate_test_pcap.py
 
 ---
 
-## 12. Extending the Project
-
-### Ideas for Improvement
-
-1. **Add More App Signatures**
-   ```cpp
-   // In types.cpp
-   if (sni.find("twitch") != std::string::npos)
-       return AppType::TWITCH;
-   ```
-
-2. **Add Bandwidth Throttling**
-   ```cpp
-   // Instead of DROP, delay packets
-   if (shouldThrottle(flow)) {
-       std::this_thread::sleep_for(10ms);
-   }
-   ```
-
-3. **Add Live Statistics Dashboard**
-   ```cpp
-   // Separate thread printing stats every second
-   void statsThread() {
-       while (running) {
-           printStats();
-           sleep(1);
-       }
-   }
-   ```
-
-4. **Add QUIC/HTTP3 Support**
-   - QUIC uses UDP on port 443
-   - SNI is in the Initial packet (encrypted differently)
-
-5. **Add Persistent Rules**
-   - Save rules to file
-   - Load on startup
-
----
-
 ## Implemented traffic-analysis additions
 
 - Added signatures for Twitch, Steam, Slack, Snapchat, LinkedIn, Reddit, Roblox, and Epic Games, and tightened domain matches to avoid substring collisions.
