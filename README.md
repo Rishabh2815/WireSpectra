@@ -1005,6 +1005,24 @@ Example:
 
 The engine processes saved PCAP captures; it does not shape live host traffic. Vercel can serve static assets but cannot run persistent packet capture or DPI. Deploy the frontend on Vercel and run the capture engine on a persistent host with the required interface access.
 
+### Run the analyzer in Docker
+
+Build the CLI image from the repository root:
+
+```sh
+docker build -t wirespectra-dpi .
+```
+
+Run a capture by mounting its directory at `/data`:
+
+```sh
+docker run --rm -v "${PWD}:/data" wirespectra-dpi \
+  /data/test_dpi.pcap /data/filtered.pcap \
+  --rules /data/rules.conf --block-app Twitch
+```
+
+The image runs as a non-root user and expects PCAP files in the mounted `/data` directory. This is a one-shot CLI container, so Docker Compose is not required. The container processes saved captures; live interface capture is not implemented.
+
 ## Summary
 
 This DPI engine demonstrates:
