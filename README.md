@@ -1021,7 +1021,18 @@ docker run --rm -v "${PWD}:/data" wirespectra-dpi \
   --rules /data/rules.conf --block-app Twitch
 ```
 
-The image runs as a non-root user and expects PCAP files in the mounted `/data` directory. This is a one-shot CLI container, so Docker Compose is not required. The container processes saved captures; live interface capture is not implemented.
+The image runs as a non-root user and expects PCAP files in the mounted `/data` directory. This is a one-shot CLI container, so Docker Compose is not required.
+
+To capture from a live interface, list the host interfaces and capture for a fixed duration:
+
+```sh
+docker run --rm --network host --user 0:0 --cap-add NET_RAW --cap-add NET_ADMIN \\
+  -v "${PWD}:/data" wirespectra-dpi \\
+  --interface eth0 --duration 30 /data/live-filtered.pcap \\
+  --rules /data/rules.conf --block-app Twitch
+```
+
+Use `--list-interfaces` to list interfaces visible to the process. Live mode captures into a temporary PCAP, then analyzes it through the normal DPI pipeline; it does not forward or drop traffic inline. Host interface access and capture privileges are required. The example runs as root inside the container and may create root-owned output files. Docker Desktop on Windows/macOS does not provide Linux host networking/interface access the same way as native Linux; run this on Linux for host-interface capture.
 
 ## Summary
 

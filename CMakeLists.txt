@@ -7,6 +7,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PCAP REQUIRED IMPORTED_TARGET libpcap)
 
 add_executable(packet_analyzer
     src/dpi_mt.cpp
@@ -16,7 +18,7 @@ add_executable(packet_analyzer
     src/types.cpp
 )
 target_include_directories(packet_analyzer PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(packet_analyzer PRIVATE OpenSSL::Crypto Threads::Threads)
+target_link_libraries(packet_analyzer PRIVATE OpenSSL::Crypto Threads::Threads PkgConfig::PCAP)
 if(MSVC)
     target_compile_options(packet_analyzer PRIVATE /W4)
 else()

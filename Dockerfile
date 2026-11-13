@@ -3,7 +3,7 @@ FROM ubuntu:24.04 AS build
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends cmake g++ libssl-dev make \
+    && apt-get install -y --no-install-recommends cmake g++ libssl-dev libpcap-dev pkg-config make \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
@@ -18,7 +18,7 @@ FROM ubuntu:24.04 AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libssl3 ca-certificates \
+    && apt-get install -y --no-install-recommends libssl3 libpcap0.8 ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 --create-home --home-dir /home/wirespectra wirespectra
 

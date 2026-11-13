@@ -18,6 +18,8 @@
 #include <optional>
 #include <sstream>
 #include <cctype>
+#include <limits>
+#include <pcap.h>
 
 #include "pcap_reader.h"
 #include "packet_parser.h"
@@ -674,23 +676,95 @@ private:
 // =============================================================================
 // Main
 // =============================================================================
+bool listCaptureInterfaces() {
+    pcap_if_t* devices = nullptr;
+    char error[PCAP_ERRBUF_SIZE] = {};
+    if (pcap_findalldevs(&devices, error) != 0) {
+        std::cerr << "Could not list capture interfaces: " << error << '\n';
+        return false;
+    }
+    for (pcap_if_t* device = devices; device; device = device->next)
+        std::cout << device->name << (device->description ? "\t" + std::string(device->description) : "") << '\n';
+    pcap_freealldevs(devices);
+    return true;
+}
+
+bool captureInterface(const std::string& interface_name, const std::string& capture_file,
+                      unsigned int duration_seconds) {
+    char error[PCAP_ERRBUF_SIZE] = {};
+    pcap_t* handle = pcap_create(interface_name.c_str(), error);
+    if (!handle) {
+        std::cerr << "Could not create capture on '" << interface_name << "': " << error << '\n';
+        return false;
+    }
+    pcap_set_snaplen(handle, 65535);
+    pcap_set_promisc(handle, 1);
+    pcap_set_timeout(handle, 500);
+    pcap_set_immediate_mode(handle, 1);
+    const int activate_status = pcap_activate(handle);
+    if (activate_status < 0) {
+        std::cerr << "Could not activate capture on '" << interface_name << "': " << pcap_geterr(handle) << '\n';
+        pcap_close(handle);
+        return false;
+    }
+    if (activate_status > 0)
+        std::cerr << "Capture warning: " << pcap_statustostr(activate_status) << '\n';
+    if (pcap_datalink(handle) != DLT_EN10MB) {
+        std::cerr << "Interface link type is not Ethernet; this parser currently requires Ethernet captures.\n";
+        pcap_close(handle);
+        return false;
+    }
+    pcap_dumper_t* dumper = pcap_dump_open(handle, capture_file.c_str());
+    if (!dumper) {
+        std::cerr << "Could not create temporary capture: " << pcap_geterr(handle) << '\n';
+        pcap_close(handle);
+        return false;
+    }
+    std::cout << "Capturing on " << interface_name << " for " << duration_seconds << " seconds...\n";
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(duration_seconds);
+    uint64_t captured = 0;
+    while (std::chrono::steady_clock::now() < deadline) {
+        pcap_pkthdr* header = nullptr;
+        const u_char* packet = nullptr;
+        const int status = pcap_next_ex(handle, &header, &packet);
+        if (status == 1) { pcap_dump(reinterpret_cast<u_char*>(dumper), header, packet); ++captured; }
+        else if (status == 0) continue;
+        else if (status == -2) break;
+        else {
+            std::cerr << "Capture failed: " << pcap_geterr(handle) << '\n';
+            pcap_dump_close(dumper);
+            pcap_close(handle);
+            return false;
+        }
+    }
+    pcap_dump_flush(dumper);
+    pcap_dump_close(dumper);
+    pcap_close(handle);
+    std::cout << "Captured " << captured << " packets to temporary PCAP.\n";
+    return true;
+}
+
 void printUsage(const char* prog) {
     std::cout << R"(
 DPI Engine v2.0 - Multi-threaded Deep Packet Inspection
 ========================================================
 
-Usage: )" << prog << R"( <input.pcap> <output.pcap> [options]
+Offline PCAP:
+  )" << prog << R"( <input.pcap> <output.pcap> [options]
+Live interface:
+  )" << prog << R"( --interface <name> --duration <seconds> <output.pcap> [options]
+List interfaces:
+  )" << prog << R"( --list-interfaces
 
 Options:
-  --block-ip <ip>        Block source IP
-  --block-app <app>      Block application (YouTube, Facebook, etc.)
+  --block-ip <ip>        Block source IP in the analyzed output
+  --block-app <app>      Block application (YouTube, Twitch, etc.)
   --block-domain <dom>   Block domain (substring match)
   --rules <file>         Load/save persistent rules (default: rules.conf)
   --lbs <n>              Number of load balancer threads (default: 2)
   --fps <n>              FP threads per LB (default: 2)
 
-Example:
-  )" << prog << R"( capture.pcap filtered.pcap --block-app YouTube --block-ip 192.168.1.50
+Live mode captures packets, then analyzes the saved capture. It does not forward or drop live traffic inline.
 )";
 }
 
@@ -719,19 +793,44 @@ int main(int argc, char* argv[]) {
         std::cout << "Signature and QUIC Initial self-tests passed\n";
         return 0;
     }
-    if (argc < 3) {
-        printUsage(argv[0]);
-        return 1;
+    if (argc >= 2 && std::string(argv[1]) == "--list-interfaces")
+        return listCaptureInterfaces() ? 0 : 1;
+
+    std::string interface_name;
+    unsigned int capture_duration = 0;
+    int option_start = 3;
+    std::string input, output;
+    if (argc >= 2 && std::string(argv[1]) == "--interface") {
+        if (argc < 6) { printUsage(argv[0]); return 1; }
+        interface_name = argv[2];
+        if (std::string(argv[3]) != "--duration") { printUsage(argv[0]); return 1; }
+        try {
+            const unsigned long parsed = std::stoul(argv[4]);
+            if (parsed == 0 || parsed > 86400) throw std::out_of_range("duration");
+            capture_duration = static_cast<unsigned int>(parsed);
+        } catch (...) {
+            std::cerr << "Capture duration must be an integer from 1 to 86400 seconds.\n";
+            return 1;
+        }
+        output = argv[5];
+        input = output + ".capture.tmp.pcap";
+        option_start = 6;
+        for (int i = option_start; i < argc; ++i) {
+            const std::string arg = argv[i];
+            if ((arg == "--block-ip" || arg == "--block-app" || arg == "--block-domain" || arg == "--rules" || arg == "--lbs" || arg == "--fps") && i + 1 < argc) ++i;
+            else if (arg.rfind("--", 0) == 0) { std::cerr << "Unknown option: " << arg << '\n'; return 1; }
+        }
+    } else {
+        if (argc < 3) { printUsage(argv[0]); return 1; }
+        input = argv[1];
+        output = argv[2];
     }
-    
-    std::string input = argv[1];
-    std::string output = argv[2];
     
     DPIEngine::Config cfg;
     std::vector<std::string> block_ips, block_apps, block_domains;
     std::string rules_file = "rules.conf";
     
-    for (int i = 3; i < argc; i++) {
+    for (int i = option_start; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--block-ip" && i + 1 < argc) block_ips.push_back(argv[++i]);
         else if (arg == "--block-app" && i + 1 < argc) block_apps.push_back(argv[++i]);
@@ -749,9 +848,11 @@ int main(int argc, char* argv[]) {
     for (const auto& app : block_apps) engine.blockApp(app);
     for (const auto& dom : block_domains) engine.blockDomain(dom);
     
-    if (!engine.process(input, output)) {
+    if (!interface_name.empty() && !captureInterface(interface_name, input, capture_duration))
         return 1;
-    }
+    const bool processed = engine.process(input, output);
+    if (!interface_name.empty()) std::remove(input.c_str());
+    if (!processed) return 1;
     
     std::cout << "\nOutput written to: " << output << "\n";
     return 0;
